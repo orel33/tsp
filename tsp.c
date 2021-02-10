@@ -7,10 +7,12 @@
  **/
 
 #include <assert.h>
+#include <getopt.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /* ************************************************************************** */
 /*                                STRUCT                                      */
@@ -24,6 +26,7 @@ typedef struct {
   uint first;    /* first city */
   uint distmax;  /* max distance bewteen cities */
   uint *distmat; /* distance matrix */
+  bool verbose;  /* verbose mode */
 } TSP;
 
 typedef struct {
@@ -117,14 +120,16 @@ void addNewCity(path *p, uint city) {
   assert(city < p->max);
   p->cities[p->length] = city;
   p->length++;
+
+  // uint dist = getDistance(tsp, lastcity, newcity);
 }
 
 /* ************************************************************************** */
 
-// void removeLastCity(path *p) {
-//   assert(p);
-//   if (p->length > 0) p->length--;
-// }
+void removeLastCity(path *p) {
+  assert(p);
+  if (p->length > 0) p->length--;
+}
 
 /* ************************************************************************** */
 
@@ -144,7 +149,7 @@ bool checkPath(path *p) {
 /* ************************************************************************** */
 
 /* generate a random instance of TSP problem */
-TSP *createTSP(uint size, uint first, uint distmax, uint seed) {
+TSP *createTSP(uint size, uint first, uint distmax, uint seed, bool verbose) {
   assert(size >= 2);
   assert(first < size);
   TSP *tsp = malloc(sizeof(TSP));
@@ -155,6 +160,7 @@ TSP *createTSP(uint size, uint first, uint distmax, uint seed) {
   tsp->seed = seed;
   tsp->distmat = genDistMat(size, distmax, seed);
   assert(tsp->distmat);
+  tsp->verbose = verbose;
   return tsp;
 }
 
@@ -175,15 +181,14 @@ void solveRec(TSP *tsp, path *p, uint *count) {
   uint lastcity = lastCity(p);
   for (uint newcity = 0; newcity < tsp->size; newcity++) {
     addNewCity(p, newcity);
-    // uint dist = getDistance(tsp, lastcity, newcity);
     if (checkPath(p)) {
       if (p->length == tsp->size) {
         (*count)++;
-        printPath(p);
+        if (tsp->verbose) printPath(p);
       }
       solveRec(tsp, p, count);
     }
-    p->length--; /* remove last city */
+    removeLastCity(p);
   }
 }
 
@@ -201,14 +206,30 @@ void solveTSP(TSP *tsp, uint *count) {
 /*                                   MAIN                                     */
 /* ************************************************************************** */
 
+void usage(int argc, char *argv[]) {
+  printf("Usage: %s [[-v] size]\n", argv[0]);
+  exit(EXIT_FAILURE);
+}
+
+/* ************************************************************************** */
+
 int main(int argc, char *argv[]) {
-  assert(argc == 2);
-  uint size = atoi(argv[1]);
+  /* parse args */
+  bool verbose = false;
+  uint size = 5; /* default size */
+  int c = getopt(argc, argv, "v");
+  if (c == 'v') verbose = true;
+  if (argc - optind == 1) size = atoi(argv[optind]);
+  if (argc - optind > 1) usage(argc, argv);
+
+  /* run solver */
+  TSP *tsp = createTSP(size, 0, 10, 0, verbose);
   uint count = 0;
-  TSP *tsp = createTSP(size, 0, 10, 0);
-  printf("Solve TSP problem of size %u starting from city %c.\n", tsp->size, 'A' + tsp->first);
+  printf("TSP problem of size %u starting from city %c.\n", tsp->size, 'A' + tsp->first);
   solveTSP(tsp, &count);
   freeTSP(tsp);
-  printf("TSP solved in 0.00ms (%u paths explored)\n", count);
+  printf("TSP solved after %u paths explored!\n", count);
   return EXIT_SUCCESS;
 }
+
+/* ************************************************************************** */

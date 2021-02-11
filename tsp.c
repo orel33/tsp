@@ -28,7 +28,7 @@ typedef struct {
   uint first;            /* first city */
   uint distmax;          /* max distance bewteen cities */
   uint *distmat;         /* distance matrix */
-  unsigned char options; /* options: verbose, optimize */
+  unsigned char options; /* options: verbose, optimize, ... */
 } TSP;
 
 typedef struct {
@@ -176,10 +176,37 @@ void createDistMat(TSP *tsp) {
 
 /* ************************************************************************** */
 
+void printDistMat(TSP *tsp) {
+  assert(tsp);
+  /* header */
+  printf("    ");
+  for (uint j = 0; j < tsp->size; j++) printf(" %c ", 'A' + j);
+  printf("\n");
+  /* separator */
+  printf("  --");
+  for (uint j = 0; j < tsp->size; j++) printf("---");
+  printf("-\n");
+  /* distance matrix */
+  for (uint i = 0; i < tsp->size; i++) {
+    printf("%c | ", 'A' + i);
+    for (uint j = 0; j < tsp->size; j++) {
+      printf("%2u ", tsp->distmat[i * tsp->size + j]);
+    }
+    printf("|\n");
+  }
+  /* separator */
+  printf("  --");
+  for (uint j = 0; j < tsp->size; j++) printf("---");
+  printf("-\n");
+}
+
+/* ************************************************************************** */
+
 /* generate a random instance of TSP problem */
 TSP *createTSP(uint size, uint first, uint distmax, uint seed, unsigned char options) {
   assert(size >= 2);
   assert(first < size);
+  assert(distmax > 0 && distmax <= 10);
   TSP *tsp = malloc(sizeof(TSP));
   assert(tsp);
   tsp->size = size;
@@ -238,7 +265,10 @@ path *solveTSP(TSP *tsp, uint *count) {
 /* ************************************************************************** */
 
 void usage(int argc, char *argv[]) {
-  printf("Usage: %s [[-vo] size]\n", argv[0]);
+  printf("Usage: %s [[-vop] size]\n", argv[0]);
+  printf("-o: solver optimization\n");
+  printf("-v: verbose mode\n");
+  printf("-p: print info on problem instance\n");
   exit(EXIT_FAILURE);
 }
 
@@ -260,6 +290,7 @@ int main(int argc, char *argv[]) {
   TSP *tsp = createTSP(size, 0, 10, 0, options);
   uint count = 0;
   printf("TSP problem of size %u starting from city %c.\n", tsp->size, 'A' + tsp->first);
+  if (tsp->options & VERBOSE) printDistMat(tsp);
   path *sol = solveTSP(tsp, &count);
   uint max = printf("TSP solved after %u paths fully explored over %lu!\n", count, factorial(tsp->size - 1));
   printPath(sol);

@@ -294,6 +294,7 @@ int main(int argc, char *argv[]) {
   uint count = 0;
   printf("TSP problem of size %u starting from city %c (seed %u).\n", tsp->size, 'A' + tsp->first, seed);
   if (tsp->options & VERBOSE) printDistMat(tsp);
+  printf("Starting path exploration...\n");
   path *sol = solveTSP(tsp, &count);
   uint max = printf("TSP solved after %u paths fully explored over %lu!\n", count, factorial(tsp->size - 1));
   printPath(sol);

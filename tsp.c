@@ -8,7 +8,6 @@
 
 #include <assert.h>
 #include <getopt.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,37 +39,10 @@ typedef struct {
 /*                                MISC                                        */
 /* ************************************************************************** */
 
-uint getDistance(TSP *tsp, uint first, uint second) {
+uint getDist(TSP *tsp, uint first, uint second) {
   assert(tsp);
+  assert(first < tsp->size && second < tsp->size);
   return tsp->distmat[first * tsp->size + second];
-}
-
-/* compute a random instance of TSP */
-uint *genDistMat(uint size, uint distmax, uint seed) {
-  srand(seed);
-  uint *dist = calloc(size * size, sizeof(uint));
-  assert(dist);
-  for (uint i = 0; i < size; i++)
-    for (uint j = 0; j < i; j++)
-      dist[i * size + j] = dist[j * size + i] = (uint)(rand() % distmax) + 1; /* random distance in range [1,distmax] */
-  return dist;
-}
-
-void printDistMat(uint size, uint *distmat) {
-  printf("Distance matrix:\n");
-  for (uint i = 0; i < size; i++)
-    for (uint j = i + 1; j < size; j++) printf("* %c-%c (%u)\n", 'A' + i, 'A' + j, distmat[i * size + j]);
-}
-
-uint computePathDistance(uint *path, uint length, uint *distmat, uint size) {
-  uint distsum = 0;
-  for (uint i = 0; i < length - 1; i++) {
-    int from = path[i];
-    int to = path[i + 1];
-    uint dist = distmat[from * size + to];
-    distsum += dist;
-  }
-  return distsum;
 }
 
 /* ************************************************************************** */
@@ -83,6 +55,7 @@ path *createPath(uint max) {
   assert(p);
   p->max = max;
   p->length = 0;
+  p->dist = 0;
   p->cities = calloc(max, sizeof(uint));
   assert(p->cities);
   return p;
@@ -101,7 +74,7 @@ void printPath(path *p) {
   assert(p);
   printf("[ ");
   for (uint i = 0; i < p->length; i++) printf("%c ", 'A' + p->cities[i]);
-  printf("] => (%u)\n", p->dist);  // , opt ? '*' : ' ');
+  printf("] => (%u)\n", p->dist);
 }
 
 /* ************************************************************************** */
@@ -110,25 +83,6 @@ uint lastCity(path *p) {
   assert(p);
   assert(p->length > 0);
   return p->cities[p->length - 1];
-}
-
-/* ************************************************************************** */
-
-void addNewCity(path *p, uint city) {
-  assert(p);
-  assert(p->length < p->max);
-  assert(city < p->max);
-  p->cities[p->length] = city;
-  p->length++;
-
-  // uint dist = getDistance(tsp, lastcity, newcity);
-}
-
-/* ************************************************************************** */
-
-void removeLastCity(path *p) {
-  assert(p);
-  if (p->length > 0) p->length--;
 }
 
 /* ************************************************************************** */
@@ -145,7 +99,55 @@ bool checkPath(path *p) {
 }
 
 /* ************************************************************************** */
+
+void updatePathDist(TSP *tsp, path *p) {
+  uint distsum = 0;
+  for (uint i = 0; i < p->length - 1; i++) {
+    int first = p->cities[i];
+    int second = p->cities[i + 1];
+    uint dist = tsp->distmat[first * tsp->size + second];
+    distsum += dist;
+  }
+  p->dist = distsum;
+}
+
+/* ************************************************************************** */
+
+void pushCity(TSP *tsp, path *p, uint city) {
+  assert(p);
+  assert(p->length < p->max);
+  assert(city < p->max);
+  p->cities[p->length] = city;
+  p->length++;
+  updatePathDist(tsp, p);
+}
+
+/* ************************************************************************** */
+
+void popCity(TSP *tsp, path *p) {
+  assert(p);
+  assert(p->length > 0);
+  p->length--;
+  updatePathDist(tsp, p);
+}
+
+/* ************************************************************************** */
 /*                                   TSP                                      */
+/* ************************************************************************** */
+
+void createDistMat(TSP *tsp) {
+  assert(tsp);
+  srand(tsp->seed);
+  uint *distmat = calloc(tsp->size * tsp->size, sizeof(uint));
+  assert(distmat);
+  for (uint i = 0; i < tsp->size; i++)
+    for (uint j = 0; j < i; j++) {
+      uint dist = (uint)(rand() % tsp->distmax) + 1; /* random distance in range [1,distmax] */
+      distmat[i * tsp->size + j] = distmat[j * tsp->size + i] = dist;
+    }
+  tsp->distmat = distmat;
+}
+
 /* ************************************************************************** */
 
 /* generate a random instance of TSP problem */
@@ -158,9 +160,8 @@ TSP *createTSP(uint size, uint first, uint distmax, uint seed, bool verbose) {
   tsp->first = first;
   tsp->distmax = distmax;
   tsp->seed = seed;
-  tsp->distmat = genDistMat(size, distmax, seed);
-  assert(tsp->distmat);
   tsp->verbose = verbose;
+  createDistMat(tsp);
   return tsp;
 }
 
@@ -178,9 +179,8 @@ void freeTSP(TSP *p) {
 void solveRec(TSP *tsp, path *p, uint *count) {
   assert(tsp);
   if (p->length == tsp->size) return;
-  uint lastcity = lastCity(p);
-  for (uint newcity = 0; newcity < tsp->size; newcity++) {
-    addNewCity(p, newcity);
+  for (uint city = 0; city < tsp->size; city++) {
+    pushCity(tsp, p, city);
     if (checkPath(p)) {
       if (p->length == tsp->size) {
         (*count)++;
@@ -188,7 +188,7 @@ void solveRec(TSP *tsp, path *p, uint *count) {
       }
       solveRec(tsp, p, count);
     }
-    removeLastCity(p);
+    popCity(tsp, p);
   }
 }
 
@@ -197,7 +197,7 @@ void solveRec(TSP *tsp, path *p, uint *count) {
 void solveTSP(TSP *tsp, uint *count) {
   assert(tsp);
   path *p = createPath(tsp->size);
-  addNewCity(p, tsp->first); /* lets put the first city in path */
+  pushCity(tsp, p, tsp->first); /* push the first city */
   solveRec(tsp, p, count);
   freePath(p);
 }

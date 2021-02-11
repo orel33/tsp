@@ -8,6 +8,7 @@
 
 #include <assert.h>
 #include <getopt.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,13 +20,15 @@
 
 typedef unsigned int uint;
 
+enum { VERBOSE = 1, OPTIMIZE = 2 };
+
 typedef struct {
-  uint size;     /* nb of cities (problem size)) */
-  uint seed;     /* random seed */
-  uint first;    /* first city */
-  uint distmax;  /* max distance bewteen cities */
-  uint *distmat; /* distance matrix */
-  bool verbose;  /* verbose mode */
+  uint size;             /* nb of cities (problem size)) */
+  uint seed;             /* random seed */
+  uint first;            /* first city */
+  uint distmax;          /* max distance bewteen cities */
+  uint *distmat;         /* distance matrix */
+  unsigned char options; /* options: verbose, optimize */
 } TSP;
 
 typedef struct {
@@ -37,6 +40,13 @@ typedef struct {
 
 /* ************************************************************************** */
 /*                                MISC                                        */
+/* ************************************************************************** */
+
+unsigned long factorial(unsigned long x) {
+  if (x <= 1) return 1;
+  return x * factorial(x - 1);
+}
+
 /* ************************************************************************** */
 
 uint getDist(TSP *tsp, uint first, uint second) {
@@ -63,6 +73,16 @@ path *createPath(uint max) {
 
 /* ************************************************************************** */
 
+void assignPath(path *src, path *dst) {
+  assert(src && dst);
+  dst->max = src->max;
+  dst->length = src->length;
+  dst->dist = src->dist;
+  for (uint i = 0; i < dst->length; i++) dst->cities[i] = src->cities[i];
+}
+
+/* ************************************************************************** */
+
 void freePath(path *p) {
   if (p) free(p->cities);
   free(p);
@@ -83,19 +103,6 @@ uint lastCity(path *p) {
   assert(p);
   assert(p->length > 0);
   return p->cities[p->length - 1];
-}
-
-/* ************************************************************************** */
-
-/* check if the current path is valid */
-bool checkPath(path *p) {
-  assert(p);
-  if (p->length <= 1) return true;
-  uint last = p->cities[p->length - 1];
-  for (uint i = 0; i < p->length - 1; i++) {
-    if (p->cities[i] == last) return false; /* already used */
-  }
-  return true;
 }
 
 /* ************************************************************************** */
@@ -132,6 +139,25 @@ void popCity(TSP *tsp, path *p) {
 }
 
 /* ************************************************************************** */
+
+bool checkPath(TSP *tsp, path *cur, path *sol) {
+  assert(cur);
+  /* check if current path is invalid */
+  if (cur->length <= 1) return true;
+  uint last = cur->cities[cur->length - 1];
+  for (uint i = 0; i < cur->length - 1; i++) {
+    if (cur->cities[i] == last) return false; /* already used */
+  }
+
+  /* check if current path is worst than current solution */
+  if (tsp->options & OPTIMIZE) {
+    if (sol && cur->dist >= sol->dist) return false;
+  }
+
+  return true;
+}
+
+/* ************************************************************************** */
 /*                                   TSP                                      */
 /* ************************************************************************** */
 
@@ -151,7 +177,7 @@ void createDistMat(TSP *tsp) {
 /* ************************************************************************** */
 
 /* generate a random instance of TSP problem */
-TSP *createTSP(uint size, uint first, uint distmax, uint seed, bool verbose) {
+TSP *createTSP(uint size, uint first, uint distmax, uint seed, unsigned char options) {
   assert(size >= 2);
   assert(first < size);
   TSP *tsp = malloc(sizeof(TSP));
@@ -160,7 +186,7 @@ TSP *createTSP(uint size, uint first, uint distmax, uint seed, bool verbose) {
   tsp->first = first;
   tsp->distmax = distmax;
   tsp->seed = seed;
-  tsp->verbose = verbose;
+  tsp->options = options;
   createDistMat(tsp);
   return tsp;
 }
@@ -176,30 +202,35 @@ void freeTSP(TSP *p) {
 /*                                 SOLVER                                     */
 /* ************************************************************************** */
 
-void solveRec(TSP *tsp, path *p, uint *count) {
+void solveRec(TSP *tsp, path *cur, path *opt, uint *count) {
   assert(tsp);
-  if (p->length == tsp->size) return;
+  if (cur->length == tsp->size) return;
+  /* try to extend the current path with all cities */
   for (uint city = 0; city < tsp->size; city++) {
-    pushCity(tsp, p, city);
-    if (checkPath(p)) {
-      if (p->length == tsp->size) {
+    pushCity(tsp, cur, city);
+    if (checkPath(tsp, cur, opt)) {
+      if (cur->length == tsp->size) {
+        if (cur->dist < opt->dist) assignPath(cur, opt);
+        if (tsp->options & VERBOSE) printPath(cur);
         (*count)++;
-        if (tsp->verbose) printPath(p);
       }
-      solveRec(tsp, p, count);
+      solveRec(tsp, cur, opt, count);
     }
-    popCity(tsp, p);
+    popCity(tsp, cur);
   }
 }
 
 /* ************************************************************************** */
 
-void solveTSP(TSP *tsp, uint *count) {
+path *solveTSP(TSP *tsp, uint *count) {
   assert(tsp);
-  path *p = createPath(tsp->size);
-  pushCity(tsp, p, tsp->first); /* push the first city */
-  solveRec(tsp, p, count);
-  freePath(p);
+  path *cur = createPath(tsp->size);
+  path *sol = createPath(tsp->size);
+  sol->dist = UINT_MAX;
+  pushCity(tsp, cur, tsp->first);
+  solveRec(tsp, cur, sol, count);
+  freePath(cur);
+  return sol;
 }
 
 /* ************************************************************************** */
@@ -207,7 +238,7 @@ void solveTSP(TSP *tsp, uint *count) {
 /* ************************************************************************** */
 
 void usage(int argc, char *argv[]) {
-  printf("Usage: %s [[-v] size]\n", argv[0]);
+  printf("Usage: %s [[-vo] size]\n", argv[0]);
   exit(EXIT_FAILURE);
 }
 
@@ -215,20 +246,25 @@ void usage(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
   /* parse args */
-  bool verbose = false;
+  unsigned char options = 0;
   uint size = 5; /* default size */
-  int c = getopt(argc, argv, "v");
-  if (c == 'v') verbose = true;
+  int c;
+  while ((c = getopt(argc, argv, "vo")) != -1) {
+    if (c == 'v') options |= VERBOSE;
+    if (c == 'o') options |= OPTIMIZE;
+  }
   if (argc - optind == 1) size = atoi(argv[optind]);
   if (argc - optind > 1) usage(argc, argv);
 
   /* run solver */
-  TSP *tsp = createTSP(size, 0, 10, 0, verbose);
+  TSP *tsp = createTSP(size, 0, 10, 0, options);
   uint count = 0;
   printf("TSP problem of size %u starting from city %c.\n", tsp->size, 'A' + tsp->first);
-  solveTSP(tsp, &count);
+  path *sol = solveTSP(tsp, &count);
+  uint max = printf("TSP solved after %u paths fully explored over %lu!\n", count, factorial(tsp->size - 1));
+  printPath(sol);
   freeTSP(tsp);
-  printf("TSP solved after %u paths explored!\n", count);
+
   return EXIT_SUCCESS;
 }
 

@@ -287,6 +287,7 @@ int main(int argc, char *argv[]) {
   }
   if (argc - optind == 1) size = atoi(argv[optind]);
   if (argc - optind > 1) usage(argc, argv);
+  assert(size >= 2 && size <= 26); /* city names in range [A,Z] */
 
   /* run solver */
   TSP *tsp = createTSP(size, 0, 10, seed, options);

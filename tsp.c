@@ -265,10 +265,10 @@ path *solveTSP(TSP *tsp, uint *count) {
 /* ************************************************************************** */
 
 void usage(int argc, char *argv[]) {
-  printf("Usage: %s [[-vop] size]\n", argv[0]);
+  printf("Usage: %s [[options] size]\n", argv[0]);
   printf("-o: solver optimization\n");
   printf("-v: verbose mode\n");
-  printf("-p: print info on problem instance\n");
+  printf("-s seed: random seed\n");
   exit(EXIT_FAILURE);
 }
 
@@ -278,18 +278,20 @@ int main(int argc, char *argv[]) {
   /* parse args */
   unsigned char options = 0;
   uint size = 5; /* default size */
+  uint seed = 0; /* default seed */
   int c;
-  while ((c = getopt(argc, argv, "vo")) != -1) {
+  while ((c = getopt(argc, argv, "vos:")) != -1) {
     if (c == 'v') options |= VERBOSE;
     if (c == 'o') options |= OPTIMIZE;
+    if (c == 's') seed = atoi(optarg);
   }
   if (argc - optind == 1) size = atoi(argv[optind]);
   if (argc - optind > 1) usage(argc, argv);
 
   /* run solver */
-  TSP *tsp = createTSP(size, 0, 10, 0, options);
+  TSP *tsp = createTSP(size, 0, 10, seed, options);
   uint count = 0;
-  printf("TSP problem of size %u starting from city %c.\n", tsp->size, 'A' + tsp->first);
+  printf("TSP problem of size %u starting from city %c (seed %u).\n", tsp->size, 'A' + tsp->first, seed);
   if (tsp->options & VERBOSE) printDistMat(tsp);
   path *sol = solveTSP(tsp, &count);
   uint max = printf("TSP solved after %u paths fully explored over %lu!\n", count, factorial(tsp->size - 1));

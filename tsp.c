@@ -42,7 +42,7 @@ typedef struct {
 /*                                MISC                                        */
 /* ************************************************************************** */
 
-unsigned long factorial(unsigned long x) {
+unsigned long long factorial(unsigned long long x) {
   if (x <= 1) return 1;
   return x * factorial(x - 1);
 }
@@ -296,8 +296,8 @@ int main(int argc, char *argv[]) {
   if (tsp->options & VERBOSE) printDistMat(tsp);
   printf("Starting path exploration...\n");
   path *sol = solveTSP(tsp, &count);
-  uint max = factorial(tsp->size - 1);
-  printf("TSP solved after %u paths fully explored over %lu!\n", count, max);
+  unsigned long long max = factorial(tsp->size - 1);
+  printf("TSP solved after %u paths fully explored over %llu.\n", count, max);
   printPath(sol);
   freeTSP(tsp);
 

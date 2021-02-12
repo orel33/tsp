@@ -296,7 +296,8 @@ int main(int argc, char *argv[]) {
   if (tsp->options & VERBOSE) printDistMat(tsp);
   printf("Starting path exploration...\n");
   path *sol = solveTSP(tsp, &count);
-  uint max = printf("TSP solved after %u paths fully explored over %lu!\n", count, factorial(tsp->size - 1));
+  uint max = factorial(tsp->size - 1);
+  printf("TSP solved after %u paths fully explored over %lu!\n", count, max);
   printPath(sol);
   freeTSP(tsp);
 

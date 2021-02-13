@@ -96,6 +96,7 @@ void printPath(path *p) {
   assert(p);
   printf("[ ");
   for (uint i = 0; i < p->curlen; i++) printf("%c ", 'A' + p->array[i]);
+  for (uint i = p->curlen; i < p->maxlen; i++) printf("- ");
   printf("] => (%u)\n", p->dist);
 }
 

@@ -61,13 +61,13 @@ uint getDist(TSP *tsp, uint first, uint second) {
 /*                                PATH                                        */
 /* ************************************************************************** */
 
-path *createPath(uint maxlen) {
+path *createPath(uint maxlen, uint dist) {
   assert(maxlen > 0);
   path *p = malloc(sizeof(path));
   assert(p);
   p->maxlen = maxlen;
   p->curlen = 0;
-  p->dist = 0;
+  p->dist = dist;
   p->array = calloc(maxlen, sizeof(uint));
   assert(p->array);
   return p;
@@ -239,9 +239,11 @@ void solveRec(TSP *tsp, path *cur, path *sol, uint *count) {
     pushCity(tsp, cur, city);
     if (checkPath(tsp, cur, sol)) {
       if (cur->curlen == tsp->size) {
+        pushCity(tsp, cur, tsp->first); /* come back to the first city */
         if (cur->dist < sol->dist) assignPath(cur, sol);
         if (tsp->options & VERBOSE) printPath(cur);
         (*count)++;
+        popCity(tsp, cur);
       }
       solveRec(tsp, cur, sol, count);
     }
@@ -253,9 +255,8 @@ void solveRec(TSP *tsp, path *cur, path *sol, uint *count) {
 
 path *solveTSP(TSP *tsp, uint *count) {
   assert(tsp);
-  path *cur = createPath(tsp->size);
-  path *sol = createPath(tsp->size);
-  sol->dist = UINT_MAX;
+  path *cur = createPath(tsp->size + 1, 0);
+  path *sol = createPath(tsp->size + 1, UINT_MAX);
   pushCity(tsp, cur, tsp->first);
   solveRec(tsp, cur, sol, count);
   freePath(cur);
@@ -303,7 +304,7 @@ int main(int argc, char *argv[]) {
   TSP *tsp = createTSP(size, first, seed, options);
   uint count = 0;
   printf("TSP problem of size %u starting from city %c (seed %u).\n", tsp->size, 'A' + tsp->first, seed);
-  if (tsp->options & VERBOSE) printDistMat(tsp);
+  printDistMat(tsp);
   printf("Starting path exploration...\n");
   path *sol = solveTSP(tsp, &count);
   unsigned long long total = factorial(tsp->size - 1);

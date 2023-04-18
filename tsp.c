@@ -269,8 +269,9 @@ path *solveTSP(TSP *tsp, uint *count) {
 /* ************************************************************************** */
 
 void usage(int argc, char *argv[]) {
-  printf("Usage: %s <options>\n", argv[0]);
-  printf(" -n size: set problem size [default: 5]\n");
+  printf("Usage: %s -n <size> [<options>]\n", argv[0]);
+  printf(" -n size: set problem size >=2 [required]\n");
+  printf(" ---------- options ----------\n");
   printf(" -f first: set first city [default: 0]\n");
   printf(" -s seed: set random seed [default: 0]\n");
   printf(" -o: enable solver optimization\n");
@@ -285,7 +286,7 @@ void usage(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
   /* parse args */
   unsigned char options = 0;
-  uint size = 5;  /* default size */
+  uint size = 0;  /* problem size */
   uint seed = 0;  /* default seed */
   uint first = 0; /* first city */
   int c;
@@ -298,8 +299,9 @@ int main(int argc, char *argv[]) {
     if (c == 'f') first = atoi(optarg);
     if (c == 'h') usage(argc, argv);
   }
-  if (argc == 1) usage(argc, argv);
+  if (size == 0) usage(argc, argv);
   assert(size >= 2 && size <= 26); /* city names in range [A,Z] */
+  assert(first >= 0 && first < size);
 
   /* run solver */
   TSP *tsp = createTSP(size, first, seed, options);

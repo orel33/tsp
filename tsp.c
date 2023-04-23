@@ -40,7 +40,7 @@ typedef struct path {
 /*                                    PATH                                    */
 /* ************************************************************************** */
 
-static path *path_new(uint maxlen, uint dist) {
+path *path_new(uint maxlen, uint dist) {
   assert(maxlen > 0);
   path *p = malloc(sizeof(path));
   assert(p);
@@ -64,7 +64,7 @@ static void path_copy(path *src, path *dst) {
 
 /* ************************************************************************** */
 
-static void path_free(path *p) {
+void path_free(path *p) {
   if (p) free(p->array);
   free(p);
 }

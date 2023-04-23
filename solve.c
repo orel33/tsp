@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
   path *sol = tsp_solve(tsp, &count);
   printf("TSP solved after %u paths fully explored.\n", count);
   path_print(sol);
+  path_free(sol);
   tsp_free(tsp);
   free(distmat);
 

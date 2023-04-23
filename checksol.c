@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
   uint dist = path_dist(sol);
   printf("tsp dist: %u (expected: %u)\n", dist, mindist);
   tsp_free(tsp);
+  path_free(sol);
   free(distmat);
   if (dist != mindist) return EXIT_FAILURE;
   return EXIT_SUCCESS;

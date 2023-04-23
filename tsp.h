@@ -23,6 +23,19 @@ typedef struct path path;
 /* ************************************************************************** */
 
 /**
+ * @brief Create a new path.
+ * @param maxlen max length of path
+ * @param dist current distance of path
+ */
+path *path_new(uint maxlen, uint dist);
+
+/**
+ * @brief Free a path.
+ * @param p path
+ */
+void path_free(path *p);
+
+/**
  * @brief Print a path.
  * @param p path
  */

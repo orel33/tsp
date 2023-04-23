@@ -81,14 +81,6 @@ void path_print(path *p) {
 
 /* ************************************************************************** */
 
-// static uint path_last(path *p) {
-//   assert(p);
-//   assert(p->curlen > 0);
-//   return p->array[p->curlen - 1];
-// }
-
-/* ************************************************************************** */
-
 static void path_update_dist(TSP *tsp, path *p) {
   uint distsum = 0;
   for (uint i = 0; i < p->curlen - 1; i++) {
@@ -152,6 +144,7 @@ uint path_dist(path *p) {
 
 uint *distmat_random(uint size, uint seed, uint distmax) {
   srand(seed);
+  // FIXME: correct this function
   uint *distmat = calloc(size * size, sizeof(uint)); /* memory set to zero */
   assert(distmat);
   for (uint i = 0; i < size; i++)

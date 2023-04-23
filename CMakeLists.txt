@@ -27,3 +27,4 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data/ DESTINATION ${CMAKE_CURRENT_BINARY_D
 
 add_test(test1 ./checksol data/test1.txt 22)
 add_test(test2 ./checksol data/test2.txt 10)
+add_test(test3 ./random 5)
